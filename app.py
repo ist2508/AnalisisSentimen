@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import os
@@ -15,7 +16,6 @@ nltk.download('stopwords')
 st.set_page_config(page_title="Analisis Sentimen Menggunakan Naive Bayes", layout="wide")
 st.title("📊 Analisis Sentimen Menggunakan Naive Bayes")
 
-# Tabs untuk navigasi
 upload_tab, preprocess_tab, label_tab, balance_tab, model_tab, visual_tab = st.tabs([
     "📂 Upload Data",
     "🔄 Preprocessing",
@@ -25,29 +25,27 @@ upload_tab, preprocess_tab, label_tab, balance_tab, model_tab, visual_tab = st.t
     "🖼️ Visualisasi"
 ])
 
-# ===========================
-# TAB 1: UPLOAD DATA
-# ===========================
 with upload_tab:
     st.subheader("📂 Unggah File CSV")
     uploaded_file = st.file_uploader("Unggah file CSV Tweet", type="csv")
     if uploaded_file is not None:
         with open("dataMakanSiangGratis.csv", "wb") as f:
             f.write(uploaded_file.read())
+        st.session_state['data_uploaded'] = True
         st.success("✅ File berhasil diunggah. Silakan lanjut ke tab berikutnya.")
 
-# ===========================
-# TAB 2: PREPROCESSING
-# ===========================
 with preprocess_tab:
     st.subheader("🔄 Tahap Preprocessing")
     if st.button("🚀 Jalankan Preprocessing"):
-        with st.spinner("Sedang memproses data..."):
-            df_preprocessed = run_full_preprocessing("dataMakanSiangGratis.csv")
-            st.session_state.df_preprocessed = df_preprocessed
-            os.makedirs("hasil", exist_ok=True)
-            df_preprocessed.to_csv("hasil/hasil_preprocessing.csv", index=False)
-            st.success("✅ Preprocessing selesai.")
+        if not st.session_state.get('data_uploaded', False):
+            st.error("❌ Anda harus mengunggah data terlebih dahulu sebelum menjalankan preprocessing.")
+        else:
+            with st.spinner("Sedang memproses data..."):
+                df_preprocessed = run_full_preprocessing("dataMakanSiangGratis.csv")
+                st.session_state.df_preprocessed = df_preprocessed
+                os.makedirs("hasil", exist_ok=True)
+                df_preprocessed.to_csv("hasil/hasil_preprocessing.csv", index=False)
+                st.success("✅ Preprocessing selesai.")
 
     if 'df_preprocessed' in st.session_state:
         with st.expander("📄 Lihat Hasil Preprocessing"):
@@ -56,18 +54,18 @@ with preprocess_tab:
             with open("hasil/hasil_preprocessing.csv", "rb") as f:
                 st.download_button("⬇️ Unduh Hasil Preprocessing", f, file_name="hasil_preprocessing.csv", mime="text/csv")
 
-# ===========================
-# TAB 3: LABELING
-# ===========================
 with label_tab:
     st.subheader("🏷️ Tahap Labeling Sentimen")
     if st.button("🏷️ Jalankan Labeling"):
-        with st.spinner("Menentukan sentimen berdasarkan lexicon..."):
-            df_labelled = run_labeling()
-            st.session_state.df_labelled = df_labelled
-            os.makedirs("hasil", exist_ok=True)
-            df_labelled.to_csv("hasil/hasil_labeling.csv", index=False)
-            st.success("✅ Labeling selesai.")
+        if 'df_preprocessed' not in st.session_state:
+            st.error("❌ Lakukan preprocessing terlebih dahulu sebelum melakukan labeling.")
+        else:
+            with st.spinner("Menentukan sentimen berdasarkan lexicon..."):
+                df_labelled = run_labeling()
+                st.session_state.df_labelled = df_labelled
+                os.makedirs("hasil", exist_ok=True)
+                df_labelled.to_csv("hasil/hasil_labeling.csv", index=False)
+                st.success("✅ Labeling selesai.")
 
     if 'df_labelled' in st.session_state:
         with st.expander("📄 Lihat Hasil Labeling"):
@@ -76,19 +74,19 @@ with label_tab:
             with open("hasil/hasil_labeling.csv", "rb") as f:
                 st.download_button("⬇️ Unduh Hasil Labeling", f, file_name="hasil_labeling.csv", mime="text/csv")
 
-# ===========================
-# TAB 4: BALANCING
-# ===========================
 with balance_tab:
     st.subheader("⚖️ Tahap Balancing Dataset")
     if st.button("⚖️ Jalankan Balancing"):
-        with st.spinner("Menyeimbangkan jumlah data pada tiap kelas sentimen..."):
-            df_balanced, fig = run_balancing()
-            st.session_state.df_balanced = df_balanced
-            os.makedirs("hasil", exist_ok=True)
-            df_balanced.to_csv("hasil/hasil_balancing.csv", index=False)
-            st.success("✅ Balancing selesai.")
-            st.pyplot(fig)
+        if 'df_labelled' not in st.session_state:
+            st.error("❌ Anda harus melakukan labeling sebelum menjalankan balancing.")
+        else:
+            with st.spinner("Menyeimbangkan jumlah data pada tiap kelas sentimen..."):
+                df_balanced, fig = run_balancing()
+                st.session_state.df_balanced = df_balanced
+                os.makedirs("hasil", exist_ok=True)
+                df_balanced.to_csv("hasil/hasil_balancing.csv", index=False)
+                st.success("✅ Balancing selesai.")
+                st.pyplot(fig)
 
     if 'df_balanced' in st.session_state:
         with st.expander("📄 Lihat Hasil Balancing"):
@@ -97,21 +95,21 @@ with balance_tab:
             with open("hasil/hasil_balancing.csv", "rb") as f:
                 st.download_button("⬇️ Unduh Hasil Balancing", f, file_name="hasil_balancing.csv", mime="text/csv")
 
-# ===========================
-# TAB 5: MODELING
-# ===========================
 with model_tab:
     st.subheader("📈 Naive Bayes (Multinomial)")
     if st.button("🔍 Jalankan Model Naive Bayes"):
-        with st.spinner("Melatih dan mengevaluasi model..."):
-            accuracy, report, conf_matrix, result_df, *_ , x_train_len, x_test_len = run_naive_bayes()
-            st.session_state.accuracy = accuracy
-            st.session_state.report = report
-            st.session_state.df_pred = result_df
-            st.session_state.x_train_len = x_train_len
-            st.session_state.x_test_len = x_test_len
-            result_df.to_csv("hasil/Hasil_pred_MultinomialNB.csv", index=False)
-            st.success(f"✅ Akurasi Model: {accuracy:.2f}")
+        if 'df_balanced' not in st.session_state:
+            st.error("❌ Anda harus melakukan balancing sebelum menjalankan model.")
+        else:
+            with st.spinner("Melatih dan mengevaluasi model..."):
+                accuracy, report, conf_matrix, result_df, *_ , x_train_len, x_test_len = run_naive_bayes()
+                st.session_state.accuracy = accuracy
+                st.session_state.report = report
+                st.session_state.df_pred = result_df
+                st.session_state.x_train_len = x_train_len
+                st.session_state.x_test_len = x_test_len
+                result_df.to_csv("hasil/Hasil_pred_MultinomialNB.csv", index=False)
+                st.success(f"✅ Akurasi Model: {accuracy:.2f}")
 
     if 'df_pred' in st.session_state:
         st.subheader("📊 Hasil Splitting Dataset")
@@ -153,52 +151,51 @@ with model_tab:
         with open(hasil_file, "rb") as f:
             st.download_button("⬇️ Unduh Hasil Prediksi", f, file_name="hasil_sentimen.csv", mime="text/csv")
 
-# ===========================
-# TAB 6: VISUALISASI
-# ===========================
 with visual_tab:
     st.subheader("🖼️ Visualisasi Sentimen dan Kata Berdasarkan Hasil Prediksi")
-    df_vis = read_csv_safely("hasil/Hasil_pred_MultinomialNB.csv")
-    if df_vis is not None:
-        os.makedirs("hasil", exist_ok=True)
-        plot_sentiment_distribution(df_vis)
+    if 'df_pred' not in st.session_state:
+        st.error("❌ Silakan jalankan model terlebih dahulu sebelum melihat visualisasi.")
+    else:
+        df_vis = read_csv_safely("hasil/Hasil_pred_MultinomialNB.csv")
+        if df_vis is not None:
+            os.makedirs("hasil", exist_ok=True)
+            plot_sentiment_distribution(df_vis)
 
-        # Wordcloud hanya jika data tersedia
-        text_neg = ' '.join(df_vis[df_vis['Predicted'] == 'Negatif']['steming_data'].dropna())
-        if text_neg.strip():
-            create_wordcloud(text_neg, 'wordcloud_negatif.png')
+            text_neg = ' '.join(df_vis[df_vis['Predicted'] == 'Negatif']['steming_data'].dropna())
+            if text_neg.strip():
+                create_wordcloud(text_neg, 'wordcloud_negatif.png')
 
-        text_net = ' '.join(df_vis[df_vis['Predicted'] == 'Netral']['steming_data'].dropna())
-        if text_net.strip():
-            create_wordcloud(text_net, 'wordcloud_netral.png')
+            text_net = ' '.join(df_vis[df_vis['Predicted'] == 'Netral']['steming_data'].dropna())
+            if text_net.strip():
+                create_wordcloud(text_net, 'wordcloud_netral.png')
 
-        text_pos = ' '.join(df_vis[df_vis['Predicted'] == 'Positif']['steming_data'].dropna())
-        if text_pos.strip():
-            create_wordcloud(text_pos, 'wordcloud_positif.png')
+            text_pos = ' '.join(df_vis[df_vis['Predicted'] == 'Positif']['steming_data'].dropna())
+            if text_pos.strip():
+                create_wordcloud(text_pos, 'wordcloud_positif.png')
 
-        plot_top_words(df_vis, 'Negatif', 'top_words_negatif.png')
-        plot_top_words(df_vis, 'Netral', 'top_words_netral.png')
-        plot_top_words(df_vis, 'Positif', 'top_words_positif.png')
-        st.session_state.show_visual = True
+            plot_top_words(df_vis, 'Negatif', 'top_words_negatif.png')
+            plot_top_words(df_vis, 'Netral', 'top_words_netral.png')
+            plot_top_words(df_vis, 'Positif', 'top_words_positif.png')
+            st.session_state.show_visual = True
 
-    if st.session_state.get("show_visual"):
-        col1, col2 = st.columns(2)
-        with col1:
-            if os.path.exists("hasil/wordcloud_negatif.png"):
-                st.image("hasil/wordcloud_negatif.png", caption="WordCloud Negatif")
-            if os.path.exists("hasil/top_words_negatif.png"):
-                st.image("hasil/top_words_negatif.png", caption="Top Words Negatif")
-            if os.path.exists("hasil/wordcloud_netral.png"):
-                st.image("hasil/wordcloud_netral.png", caption="WordCloud Netral")
-            if os.path.exists("hasil/top_words_netral.png"):
-                st.image("hasil/top_words_netral.png", caption="Top Words Netral")
-        with col2:
-            if os.path.exists("hasil/wordcloud_positif.png"):
-                st.image("hasil/wordcloud_positif.png", caption="WordCloud Positif")
-            if os.path.exists("hasil/top_words_positif.png"):
-                st.image("hasil/top_words_positif.png", caption="Top Words Positif")
+        if st.session_state.get("show_visual"):
+            col1, col2 = st.columns(2)
+            with col1:
+                if os.path.exists("hasil/wordcloud_negatif.png"):
+                    st.image("hasil/wordcloud_negatif.png", caption="WordCloud Negatif")
+                if os.path.exists("hasil/top_words_negatif.png"):
+                    st.image("hasil/top_words_negatif.png", caption="Top Words Negatif")
+                if os.path.exists("hasil/wordcloud_netral.png"):
+                    st.image("hasil/wordcloud_netral.png", caption="WordCloud Netral")
+                if os.path.exists("hasil/top_words_netral.png"):
+                    st.image("hasil/top_words_netral.png", caption="Top Words Netral")
+            with col2:
+                if os.path.exists("hasil/wordcloud_positif.png"):
+                    st.image("hasil/wordcloud_positif.png", caption="WordCloud Positif")
+                if os.path.exists("hasil/top_words_positif.png"):
+                    st.image("hasil/top_words_positif.png", caption="Top Words Positif")
 
-        if os.path.exists("hasil/sentimen_distribution.png"):
-            st.image("hasil/sentimen_distribution.png", caption="Distribusi Sentimen")
-        if os.path.exists("hasil/conf_matrix_mnb.png"):
-            st.image("hasil/conf_matrix_mnb.png", caption="Confusion Matrix MultinomialNB")
+            if os.path.exists("hasil/sentimen_distribution.png"):
+                st.image("hasil/sentimen_distribution.png", caption="Distribusi Sentimen")
+            if os.path.exists("hasil/conf_matrix_mnb.png"):
+                st.image("hasil/conf_matrix_mnb.png", caption="Confusion Matrix MultinomialNB")
